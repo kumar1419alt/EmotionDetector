@@ -1,38 +1,50 @@
+"""Flask web application for the Watson emotion detector."""
+
 from flask import Flask, render_template, request
+
 from EmotionDetection.emotion_detection import emotion_detector
+
 
 app = Flask(__name__)
 
 
-@app.route("/")
+@app.get("/")
 def render_index_page():
+    """Render the emotion detector user interface."""
     return render_template("index.html")
 
 
-@app.route("/emotionDetector")
+@app.get("/health")
+def health_check():
+    """Lightweight health endpoint for local checks and hosting platforms."""
+    return {"status": "ok"}, 200
+
+
+@app.get("/emotionDetector")
 def emotion_detector_route():
-    text_to_analyze = request.args.get("textToAnalyze")
+    """Analyze the supplied text and return a human-readable result."""
+    text_to_analyze = request.args.get("textToAnalyze", "")
 
-    # Handle blank input
-    if not text_to_analyze or not text_to_analyze.strip():
-        return "Invalid input! Please enter a statement."
+    if not text_to_analyze.strip():
+        return "Invalid input! Please enter a statement.", 400
 
-    response = emotion_detector(text_to_analyze)
-
-    # Handle invalid input returned by Watson NLP
-    if response["dominant_emotion"] is None:
-        return "Invalid text! Please try again!"
+    result = emotion_detector(text_to_analyze)
+    if result["dominant_emotion"] is None:
+        return (
+            "Emotion analysis is temporarily unavailable. Please try again.",
+            502,
+        )
 
     return (
-        f"For the given statement, the system response is "
-        f"'anger': {response['anger']}, "
-        f"'disgust': {response['disgust']}, "
-        f"'fear': {response['fear']}, "
-        f"'joy': {response['joy']} and "
-        f"'sadness': {response['sadness']}. "
-        f"The dominant emotion is {response['dominant_emotion']}."
-    )
+        "For the given statement, the system response is "
+        f"'anger': {result['anger']}, "
+        f"'disgust': {result['disgust']}, "
+        f"'fear': {result['fear']}, "
+        f"'joy': {result['joy']} and "
+        f"'sadness': {result['sadness']}. "
+        f"The dominant emotion is {result['dominant_emotion']}."
+    ), 200
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="127.0.0.1", port=5000, debug=False)
