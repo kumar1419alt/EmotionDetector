@@ -1,15 +1,15 @@
 # Emotion Detector
 
-A Python/Flask web application that analyzes a text statement with the IBM Skills Network Watson NLP emotion service and reports the five emotion scores plus the dominant emotion.
+A Python/Flask web application that uses the IBM Skills Network Watson NLP emotion service to estimate the emotional tone of an English statement.
 
-## Emotions returned
+## Features
 
-- Anger
-- Disgust
-- Fear
-- Joy
-- Sadness
-- Dominant emotion (the emotion with the highest score)
+- Detects **anger, disgust, fear, joy, and sadness** and selects the dominant emotion.
+- Responsive browser interface with asynchronous submission and accessible status messages.
+- Handles blank input, non-success HTTP responses, network timeouts, and malformed Watson responses.
+- Includes a health endpoint at `/health`.
+- Offline unit and Flask route tests; the test suite does not need a live Watson endpoint.
+- GitHub Actions workflow runs tests on Python 3.11 and 3.12.
 
 ## Project structure
 
@@ -19,8 +19,14 @@ EmotionDetector/
 │   ├── __init__.py
 │   ├── emotion_detection.py
 │   └── test_emotion_detection.py
+├── static/
+│   └── mywebscript.js
 ├── templates/
 │   └── index.html
+├── tests/
+│   ├── __init__.py
+│   └── test_server.py
+├── .github/workflows/tests.yml
 ├── server.py
 ├── requirements.txt
 └── README.md
@@ -28,45 +34,52 @@ EmotionDetector/
 
 ## Run locally
 
-Python 3.10+ is recommended.
+Python 3.11 or 3.12 is recommended.
 
-1. Clone the repository and enter the project directory.
+1. Clone the repository and enter the project directory:
    ```bash
    git clone https://github.com/kumar1419alt/EmotionDetector.git
    cd EmotionDetector
    ```
-2. Create and activate a virtual environment (recommended).
+2. Create and activate a virtual environment:
    ```bash
    python -m venv .venv
    # Windows PowerShell
    .\.venv\Scripts\Activate.ps1
-   # macOS/Linux: source .venv/bin/activate
+   # macOS/Linux
+   source .venv/bin/activate
    ```
-3. Install dependencies.
+3. Install dependencies:
    ```bash
    python -m pip install -r requirements.txt
    ```
-4. Start Flask.
+4. Start the app:
    ```bash
    python server.py
    ```
-5. Open http://127.0.0.1:5000 in your browser. Enter an English statement and select **Analyze**.
+5. Open http://127.0.0.1:5000 and enter a statement.
 
-The analysis route is `/emotionDetector?textToAnalyze=I%20am%20happy`. The Watson NLP service requires network access. If the service is unavailable or returns an invalid response, the detector returns `None` values rather than crashing.
+## Test and verify
 
-## Tests
-
-The test module includes examples for each dominant emotion. Run it from the project root:
+Run all offline tests from the project root:
 
 ```bash
-python -m unittest EmotionDetection.test_emotion_detection -v
+python -m compileall -q EmotionDetection tests server.py
+python -m unittest EmotionDetection.test_emotion_detection tests.test_server -v
 ```
 
-These tests call the remote Watson service, so they require network access and may fail if that service is temporarily unavailable.
+The emotion-detector tests mock the Watson HTTP request and verify request formatting, all five possible dominant emotions, blank input, HTTP errors, timeouts, and malformed responses. Flask route tests cover the home page, health endpoint, invalid input, successful analysis, and unavailable-service handling. These tests are deterministic and do not require external network access.
 
-## Implementation notes
+The live Watson service is still required for real text analysis. The application uses model ID `emotion_aggregated-workflow_lang_en_stock` and sends text using the `raw_document.text` payload field. The lab endpoint may be temporarily unavailable.
 
-- Uses the required Watson model ID `emotion_aggregated-workflow_lang_en_stock`.
-- Sends input as `raw_document.text`.
-- Uses a request timeout and handles HTTP, network, and malformed-response errors.
-- Does not require API credentials for the Skills Network lab endpoint; availability is controlled by the service.
+## Endpoints
+
+- `GET /` — browser interface
+- `GET /health` — returns `{"status":"ok"}`
+- `GET /emotionDetector?textToAnalyze=I%20am%20happy` — returns emotion scores and the dominant emotion as plain text
+
+## Troubleshooting
+
+- If dependency installation fails, check your Python version and internet connection.
+- If the app returns a 502 response, the Watson endpoint may be unavailable; try again later.
+- Keep the input in English and avoid sending an empty statement.
